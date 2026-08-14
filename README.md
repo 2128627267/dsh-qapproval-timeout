@@ -36,3 +36,10 @@ npx dsh plugin --profile web add <本目录>
 - id: approval-timeout
   name: 'dsh-approval-timeout'
 ```
+
+---
+
+**版本：v1.0.0** ｜ 独立 git 仓库（plugins/dsh-approval-timeout/）｜ 生成：2026-08-15
+
+> 独立仓库说明：本插件完全自包含（样式内嵌、无共享依赖），可单独分发/发布到 GitHub 或 npm。
+> 每个插件为独立 git 仓库，git log 查看本插件历史，git tag 查看版本标签。
