@@ -1,0 +1,14 @@
+{
+  "name": "dsh-approval-timeout",
+  "version": "1.0.0",
+  "description": "Approval timeout for DeepSeek Harness: when a sandbox/escalation approval is not answered within a configurable period, the request is automatically rejected instead of waiting forever.",
+  "main": "host.js",
+  "dsh": {
+    "client": {
+      "platform": "web"
+    }
+  },
+  "license": "MIT",
+  "author": "qf",
+  "keywords": ["dsh-plugin", "dsh", "approval", "timeout", "sandbox"]
+}
