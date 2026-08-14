@@ -10,5 +10,27 @@
   },
   "license": "MIT",
   "author": "qf",
-  "keywords": ["dsh-plugin", "dsh", "approval", "timeout", "sandbox"]
+  "keywords": [
+    "dsh-plugin",
+    "dsh",
+    "approval",
+    "timeout",
+    "sandbox"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/<your-github>/dsh-approval-timeout.git"
+  },
+  "homepage": "https://github.com/<your-github>/dsh-approval-timeout#readme",
+  "bugs": {
+    "url": "https://github.com/<your-github>/dsh-approval-timeout/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "host.js",
+    "client.js",
+    "README.md"
+  ]
 }
