@@ -7,6 +7,8 @@ return {
       .dshf { font-size: 13px; line-height: 1.55; color: var(--dsw-alias-label-primary, #111827); }
       .dshf h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--dsw-alias-label-primary, #111827); }
       .dshf .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      .dshf .dshf-toggle { display: inline-flex; align-items: center; gap: 8px; }
+      .dshf .dshf-toggle input[type='checkbox'] { width: auto; margin: 0; flex: none; }
       .dshf .card { border: 1px solid var(--dsw-alias-border-l1, rgba(0,0,0,.15)); border-radius: 8px; padding: 12px 14px; margin: 10px 0; background: var(--dsw-alias-bg-layer-1, #ffffff); }
       .dshf input { background: var(--dsw-alias-bg-base, #ffffff); color: var(--dsw-alias-label-primary, #111827); border: 1px solid var(--dsw-alias-border-l1, rgba(0,0,0,.15)); border-radius: 6px; padding: 6px 10px; font-size: 13px; box-sizing: border-box; }
       .dshf input:focus { outline: none; border-color: var(--dsw-alias-brand-primary, #2563eb); }
@@ -50,7 +52,7 @@ return {
           '超时自动返回 rejected，并**向会话注入超时信息**（含操作名与原因），模型看到后自主决定：重试该操作、换方式、或继续。'),
         el('div', { className: 'card' },
           el('div', { className: 'row', style: { marginBottom: 10 } },
-            el('label', null, el('input', { type: 'checkbox', checked: form.enabled, onChange: (e) => setForm({ ...form, enabled: e.target.checked }) }), ' 启用批准超时')),
+            el('label', { className: 'dshf-toggle' }, el('input', { type: 'checkbox', checked: form.enabled, onChange: (e) => setForm({ ...form, enabled: e.target.checked }) }), ' 启用批准超时')),
           el('div', { className: 'row' },
             el('span', { className: 'muted' }, '等待秒数：'),
             el('input', { style: { width: 120 }, type: 'number', min: 5, max: 3600, value: form.seconds, onChange: (e) => setForm({ ...form, seconds: e.target.value }) }),
