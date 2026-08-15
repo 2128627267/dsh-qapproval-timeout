@@ -1,5 +1,5 @@
 {
-  "name": "dsh-approval-timeout",
+  "name": "dsh-qapproval-timeout",
   "version": "2.0.0",
   "description": "Approval timeout for DeepSeek Harness: when a sandbox/escalation approval is not answered within a configurable period, the request is automatically rejected instead of waiting forever.",
   "type": "module",
@@ -22,11 +22,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/2128627267/dsh-qaptm.git"
+    "url": "https://github.com/2128627267/dsh-qapproval-timeout.git"
   },
-  "homepage": "https://github.com/2128627267/dsh-qaptm#readme",
+  "homepage": "https://github.com/2128627267/dsh-qapproval-timeout#readme",
   "bugs": {
-    "url": "https://github.com/2128627267/dsh-qaptm/issues"
+    "url": "https://github.com/2128627267/dsh-qapproval-timeout/issues"
   },
   "engines": {
     "node": ">=18"

@@ -1,31 +1,31 @@
-// dsh-approval-timeout — native DSH bundle client half (classic __ModuleLoader__ bundle).
-window.__ModuleLoader__.load({ id: "dsh-approval-timeout", factory: (require) => {
+// dsh-qapproval-timeout — native DSH bundle client half (classic __ModuleLoader__ bundle).
+window.__ModuleLoader__.load({ id: "dsh-qapproval-timeout", factory: (require) => {
   var module = { exports: {} }
   var exports = module.exports
   Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" })
 
   var React = require("react")
-  var name = "dsh-approval-timeout"
+  var name = "dsh-qapproval-timeout"
   var inject = ["slots"]
 
   function injectStyles(ctx, css) {
     try {
       var style = document.createElement("style")
-      style.setAttribute("data-plugin", "dsh-approval-timeout")
+      style.setAttribute("data-plugin", "dsh-qapproval-timeout")
       style.textContent = css
       document.head.appendChild(style)
       var cleanup = function () {
         try { if (style.parentNode) style.parentNode.removeChild(style) } catch (ignore) { /* ignore */ }
       }
       if (ctx && typeof ctx.effect === "function") {
-        try { ctx.effect(function () { return cleanup }, "dsh-approval-timeout: styles") } catch (ignore) { /* ignore */ }
+        try { ctx.effect(function () { return cleanup }, "dsh-qapproval-timeout: styles") } catch (ignore) { /* ignore */ }
       }
       return cleanup
     } catch (ignore) { return function () {} }
   }
 
   function callApi(method, args) {
-    return fetch("/dsh-approval-timeout/" + method, {
+    return fetch("/dsh-qapproval-timeout/" + method, {
       method: method === "get" ? "GET" : "POST",
       headers: { "content-type": "application/json" },
       body: method === "get" ? undefined : JSON.stringify(args || {})
@@ -115,7 +115,7 @@ window.__ModuleLoader__.load({ id: "dsh-approval-timeout", factory: (require) =>
     }
 
     slots.inject('settings.section', function () {
-      return slots.register({ name: 'settings.section', id: 'dsh-approval-timeout', order: 95, label: function () { return '批准超时' } }, function () { return el(ApprovalTimeoutPage) })
+      return slots.register({ name: 'settings.section', id: 'dsh-qapproval-timeout', order: 95, label: function () { return '批准超时' } }, function () { return el(ApprovalTimeoutPage) })
     })
   }
 

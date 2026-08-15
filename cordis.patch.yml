@@ -1,4 +1,4 @@
-# dsh-approval-timeout bundle patch — registers the self-restoring bundle row.
+# dsh-qapproval-timeout bundle patch — registers the self-restoring bundle row.
 - insert:
-    - id: dsh-approval-timeout
-      name: 'dsh-approval-timeout'
+    - id: dsh-qapproval-timeout
+      name: 'dsh-qapproval-timeout'

@@ -1,10 +1,10 @@
-// dsh-approval-timeout — native DSH bundle host half.
+// dsh-qapproval-timeout — native DSH bundle host half.
 // Standard Cordis plugin: intercepts approval/request with a configurable timeout.
-export const name = 'dsh-approval-timeout'
+export const name = 'dsh-qapproval-timeout'
 export const inject = []
 
 const DIR = '.dsh-features'
-const TIMEOUT = '@dsh-approval-timeout@'
+const TIMEOUT = '@dsh-qapproval-timeout@'
 
 function readJsonBody(request) {
   return new Promise((resolve, reject) => {
@@ -76,7 +76,7 @@ export async function apply(ctx) {
       '你可以自主决定：重新发起该操作、改用其他方式、或向用户说明后继续。'
     try {
       if (agent && typeof agent.followup === 'function') {
-        await agent.followup({ role: 'user', content: [{ type: 'text', text }], source: { kind: 'plugin', plugin: 'dsh-approval-timeout' } })
+        await agent.followup({ role: 'user', content: [{ type: 'text', text }], source: { kind: 'plugin', plugin: 'dsh-qapproval-timeout' } })
         return 'followup-ok'
       }
     } catch { /* ignore */ }
@@ -84,7 +84,7 @@ export async function apply(ctx) {
       const sessionsSvc = get('sessions')
       const session = sessionsSvc && typeof sessionsSvc.get === 'function' && agent ? sessionsSvc.get(agent.session ? agent.session.id : agent.id) : undefined
       if (session && typeof session.append === 'function') {
-        session.append('user/message', { content: [{ type: 'text', text }], source: { kind: 'plugin', plugin: 'dsh-approval-timeout' } })
+        session.append('user/message', { content: [{ type: 'text', text }], source: { kind: 'plugin', plugin: 'dsh-qapproval-timeout' } })
         return 'log-ok'
       }
     } catch { /* ignore */ }
@@ -138,8 +138,8 @@ export async function apply(ctx) {
   ctx.inject(['webServer'], (hostCtx) => {
     hostCtx.effect(() => {
       const routes = [
-        ['/dsh-approval-timeout/get', 'GET', api.get],
-        ['/dsh-approval-timeout/set', 'POST', api.set],
+        ['/dsh-qapproval-timeout/get', 'GET', api.get],
+        ['/dsh-qapproval-timeout/set', 'POST', api.set],
       ]
       const disposers = []
       for (const [path, method, handler] of routes) {
@@ -167,6 +167,6 @@ export async function apply(ctx) {
         disposers.push(dispose)
       }
       return () => { for (const dispose of disposers) { try { dispose() } catch { /* ignore */ } } }
-    }, 'dsh-approval-timeout: http routes')
+    }, 'dsh-qapproval-timeout: http routes')
   })
 }

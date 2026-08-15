@@ -1,4 +1,4 @@
-# dsh-approval-timeout 批准超时
+# dsh-qapproval-timeout 批准超时
 
 当需要你批准的操作（沙箱升级、权限请求等）超过设定时间未响应时，**自动视为拒绝**（"先不弄"），避免无限等待阻塞任务。
 
@@ -17,15 +17,15 @@
 
 | 方法 | 入参 | 返回 |
 |------|------|------|
-| `GET /dsh-approval-timeout/get` | — | `{ enabled, seconds }` |
-| `POST /dsh-approval-timeout/set` | `{ enabled, seconds }` | 更新后的配置 |
+| `GET /dsh-qapproval-timeout/get` | — | `{ enabled, seconds }` |
+| `POST /dsh-qapproval-timeout/set` | `{ enabled, seconds }` | 更新后的配置 |
 
 ## 安装（原生 bundle，与 dshmarket 同类）
 
 本插件是标准 DSH bundle：安装后作为普通插件运行，**不产生 Cordis 动态插件、无需批准、无需任何手动激活**。
 
 ```bash
-dsh plugin --profile web add dsh-approval-timeout
+dsh plugin --profile web add dsh-qapproval-timeout
 ```
 
 重启 `dsh web` 后：
@@ -36,7 +36,7 @@ dsh plugin --profile web add dsh-approval-timeout
 
 ## 仓库
 
-- GitHub：https://github.com/2128627267/dsh-qaptm
+- GitHub：https://github.com/2128627267/dsh-qapproval-timeout
 - Topic：`dsh-plugin`（发布时请在仓库设置里添加该 topic）
 
 ---
