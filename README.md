@@ -33,25 +33,6 @@ dsh plugin --profile web add <本目录>
 
 然后重启 `dsh web`：
 
-- host 半部由插件自身自动定义并运行；
-- 已连接的浏览器页面会自动加载 client 半部（首次安装已预授权，无需再点批准）；
-- 新开的页面首次进入设置页时自动 reconcile 并加载 client。
-
----
-
-## 安装与自动启动（bundle 插件）
-
-本插件已打包为标准 DSH bundle：安装后随 DSH 进程启动自动注册并激活，无需 `cordis_define`，也无需配置 `plugin-autostart.json`。
-
-```bash
-# 发布到 npm 后（推荐，他人安装同样用这条）：
-dsh plugin --profile web add dsh-approval-timeout
-# 本地目录测试：
-dsh plugin --profile web add <本目录>
-```
-
-然后重启 `dsh web`：
-
 - host 半部由插件自身自动定义并立即运行；
 - 浏览器页面启动时自动 reconcile 并加载 client 半部（首次安装已预授权，无需再点批准、无需进入设置页）。
 
