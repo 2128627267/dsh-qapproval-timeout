@@ -1,6 +1,6 @@
 {
   "name": "dsh-approval-timeout",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Approval timeout for DeepSeek Harness: when a sandbox/escalation approval is not answered within a configurable period, the request is automatically rejected instead of waiting forever.",
   "main": "index.js",
   "dsh": {
@@ -8,7 +8,7 @@
       "patch": "./cordis.patch.yml"
     },
     "dynamic": {
-      "idPrefix": "aptm",
+      "idPrefix": "qaptm",
       "purpose": "Approval timeout for DeepSeek Harness: when a sandbox/escalation approval is not answered within a configurable period, the request is automatically rejected instead of waiting forever.",
       "host": "host.js",
       "client": "client.js"
@@ -31,15 +31,16 @@
     "dsh",
     "approval",
     "timeout",
-    "sandbox"
+    "sandbox",
+    "qf"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/<your-github>/dsh-approval-timeout.git"
+    "url": "https://github.com/2128627267/dsh-qaptm.git"
   },
-  "homepage": "https://github.com/<your-github>/dsh-approval-timeout#readme",
+  "homepage": "https://github.com/2128627267/dsh-qaptm#readme",
   "bugs": {
-    "url": "https://github.com/<your-github>/dsh-approval-timeout/issues"
+    "url": "https://github.com/2128627267/dsh-qaptm/issues"
   },
   "engines": {
     "node": ">=18"

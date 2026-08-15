@@ -33,7 +33,12 @@ dsh plugin --profile web add <本目录>
 
 然后重启 `dsh web`：
 
-- host 半部由插件自身自动定义并立即运行；
+- host 半部由插件自身自动定义并运行（统一 id 前缀 `qaptm`，如 `qaptm-1`）；
 - 浏览器页面启动时自动 reconcile 并加载 client 半部（首次安装已预授权，无需再点批准、无需进入设置页）。
+
+## 仓库
+
+- GitHub：https://github.com/2128627267/dsh-qaptm
+- Topic：`dsh-plugin`（发布时请在仓库设置里添加该 topic）
 
 ---

@@ -8,6 +8,7 @@ export const inject = ['dynamicCordisRunner']
 
 const RECONCILE_KEY = '__dshQfBundleReconcileDone'
 const ATTEMPT_KEY = '__dshQfBundleReconcileAttempts'
+const MAX_ATTEMPTS = 10
 
 function reconcile(ctx) {
   try {
@@ -32,12 +33,13 @@ function reconcile(ctx) {
 export function apply(ctx) {
   if (globalThis[RECONCILE_KEY]) return
   const attempts = globalThis[ATTEMPT_KEY] || 0
-  if (attempts >= 3) return
+  if (attempts >= MAX_ATTEMPTS) return
   globalThis[ATTEMPT_KEY] = attempts + 1
   globalThis[RECONCILE_KEY] = true
   Promise.resolve(reconcile(ctx)).then((ok) => {
-    if (ok || attempts >= 2) return
+    if (ok) return
     globalThis[RECONCILE_KEY] = false
-    setTimeout(() => apply(ctx), 1000)
+    const delay = Math.min(500 * (2 ** attempts), 5000)
+    setTimeout(() => apply(ctx), delay)
   })
 }

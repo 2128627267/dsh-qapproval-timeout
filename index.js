@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 const PKG_DIR = fileURLToPath(new URL('.', import.meta.url))
 const PLUGIN_NAME = "dsh-approval-timeout"
-const ID_PREFIX = "aptm"
+const ID_PREFIX = "qaptm"
 const PURPOSE = "Approval timeout for DeepSeek Harness: when a sandbox/escalation approval is not answered within a configurable period, the request is automatically rejected instead of waiting forever."
 const HOST_FILE = "host.js"
 const CLIENT_FILE = "client.js"
@@ -23,6 +23,56 @@ function log(ctx, message) {
 
 function rootAgents(agents) {
   try { return typeof agents?.roots === 'function' ? agents.roots() : [] } catch { return [] }
+}
+
+function archivedSet(workspaceSvc) {
+  const archived = new Set()
+  try {
+    for (const id of workspaceSvc?.archivedSessionIds ?? []) archived.add(String(id))
+  } catch { /* ignore */ }
+  return archived
+}
+
+function workspaceKeyOf(sessionId, workspaceSvc) {
+  try {
+    for (const ws of workspaceSvc?.list?.() ?? []) {
+      if ((ws?.sessionIds ?? []).some((id) => String(id) === String(sessionId))) {
+        return String(ws?.id ?? ws?.path ?? 'default')
+      }
+    }
+  } catch { /* ignore */ }
+  return 'default'
+}
+
+/**
+ * One bootstrap target per workspace (or one total when the workspace service
+ * is unavailable): the newest non-archived root session. Restoring every root
+ * used to duplicate each bundle in every old session and made tool names
+ * (kb_search / rules_read / browser_open) collide across those duplicates.
+ */
+function startupTargets(agents, workspaceSvc) {
+  const roots = rootAgents(agents)
+  if (roots.length === 0) return []
+  const archived = archivedSet(workspaceSvc)
+  const live = roots.filter((agent) => agent?.session?.id && !archived.has(String(agent.session.id)))
+  const candidates = live.length > 0 ? live : roots
+  const groups = new Map()
+  for (const agent of candidates) {
+    const key = workspaceKeyOf(agent.session.id, workspaceSvc)
+    const list = groups.get(key) ?? []
+    list.push(agent)
+    groups.set(key, list)
+  }
+  return [...groups.values()].map((list) => list.reduce((newest, agent) => {
+    const a = Number(newest?.session?.createdAt ?? 0)
+    const b = Number(agent?.session?.createdAt ?? 0)
+    return b > a ? agent : newest
+  }, list[0])).filter(Boolean)
+}
+
+function isArchived(agent, workspaceSvc) {
+  if (!agent?.session?.id || !workspaceSvc?.archivedSessionIds) return false
+  try { return workspaceSvc.archivedSessionIds.some((id) => String(id) === String(agent.session.id)) } catch { return false }
 }
 
 function existingPlugin(runner, sessionId) {
@@ -46,22 +96,16 @@ function preApprove(plugin, packageId) {
 }
 
 async function activate(runner, agent, plugin, packageId) {
-  // runner.run() walks the model path and emits cordis/request-run. Pre-approving
-  // the client package means no human approval is required, and the companion
-  // client-loader reconciles the request as soon as the page boots.
+  // Pre-authorize the exact installed package, then arm the STANDARD run
+  // request and return. The browser-side client-loader owns both halves from
+  // here: it reconciles the request (runHostHalf), loads the client half and
+  // settles activation. Calling runHostHalf immediately on the host used to
+  // race that reconcile and produced "run request no longer identifies the
+  // latest run" failures.
   preApprove(plugin, packageId)
   const mode = plugin?.currentPackageId !== undefined && plugin.currentPackageId !== packageId ? 'update' : 'run'
   if (typeof runner?.run === 'function') {
-    const started = await runner.run(agent, plugin.pluginId, packageId, mode)
-    if (started?.ok === false) return started
-    // Start the host half immediately (the request is already armed). The client
-    // loader reconciles the same request later and only finishes the client half.
-    const requestId = plugin?.latestRun?.approvalRequestId
-    if (requestId) {
-      const hostStarted = await runner.runHostHalf(agent, plugin.pluginId, packageId, mode, requestId, false)
-      if (hostStarted?.ok === false) return hostStarted
-    }
-    return started
+    return await runner.run(agent, plugin.pluginId, packageId, mode)
   }
   return await runner?.runHostHalf?.(agent, plugin.pluginId, packageId, mode, null, false)
 }
@@ -79,6 +123,7 @@ export async function apply(ctx) {
     if (clientCode !== undefined) code.client = clientCode
     if (Object.keys(code).length === 0) { log(ctx, 'skip: no host/client source'); return }
 
+    const workspaceSvc = typeof ctx.get === 'function' ? ctx.get('workspace') : undefined
     const busy = new Set()
     async function ensureForAgent(agent) {
       if (!agent?.session?.id) return
@@ -117,14 +162,16 @@ export async function apply(ctx) {
       }
     }
 
+    // Register first so an agent created during startup is not missed.
     try {
       ctx.on('agent/created', (payload) => {
         const agent = payload?.agent
-        if (agent) ensureForAgent(agent).catch((error) => log(ctx, `agent/created error: ${error?.message || error}`))
+        if (!agent || isArchived(agent, workspaceSvc)) return
+        ensureForAgent(agent).catch((error) => log(ctx, `agent/created error: ${error?.message || error}`))
       })
     } catch { /* ignore */ }
 
-    for (const agent of rootAgents(agents)) await ensureForAgent(agent)
+    for (const agent of startupTargets(agents, workspaceSvc)) await ensureForAgent(agent)
   } catch (error) {
     log(ctx, `apply failed: ${error?.message || error}`)
   }
