@@ -20,26 +20,39 @@
 | `approval-timeout/get` | — | `{ enabled, seconds }` |
 | `approval-timeout/set` | `{ enabled, seconds }` | 更新后的配置 |
 
-## 动态插件加载
+## 安装与自动启动（bundle 插件）
 
-`host.js` + `client.js` 为 Cordis 动态插件代码（函数体）。在会话中用 cordis_define / cordis_run 加载（client 半部需用户批准）。
-
-## 持久安装
+本插件已打包为标准 DSH bundle：安装后随 DSH 进程启动自动注册并激活，无需 `cordis_define`，也无需配置 `plugin-autostart.json`。
 
 ```bash
-npx dsh plugin --profile web add <本目录>
+# 发布到 npm 后（推荐，他人安装同样用这条）：
+dsh plugin --profile web add dsh-approval-timeout
+# 本地目录测试：
+dsh plugin --profile web add <本目录>
 ```
 
-然后在 `profiles/web/cordis.patch.yml` 追加：
+然后重启 `dsh web`：
 
-```yaml
-- id: approval-timeout
-  name: 'dsh-approval-timeout'
-```
+- host 半部由插件自身自动定义并运行；
+- 已连接的浏览器页面会自动加载 client 半部（首次安装已预授权，无需再点批准）；
+- 新开的页面首次进入设置页时自动 reconcile 并加载 client。
 
 ---
 
-**版本：v1.0.0** ｜ 独立 git 仓库（plugins/dsh-approval-timeout/）｜ 生成：2026-08-15
+## 安装与自动启动（bundle 插件）
 
-> 独立仓库说明：本插件完全自包含（样式内嵌、无共享依赖），可单独分发/发布到 GitHub 或 npm。
-> 每个插件为独立 git 仓库，git log 查看本插件历史，git tag 查看版本标签。
+本插件已打包为标准 DSH bundle：安装后随 DSH 进程启动自动注册并激活，无需 `cordis_define`，也无需配置 `plugin-autostart.json`。
+
+```bash
+# 发布到 npm 后（推荐，他人安装同样用这条）：
+dsh plugin --profile web add dsh-approval-timeout
+# 本地目录测试：
+dsh plugin --profile web add <本目录>
+```
+
+然后重启 `dsh web`：
+
+- host 半部由插件自身自动定义并立即运行；
+- 浏览器页面启动时自动 reconcile 并加载 client 半部（首次安装已预授权，无需再点批准、无需进入设置页）。
+
+---

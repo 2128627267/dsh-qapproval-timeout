@@ -1,11 +1,27 @@
 {
   "name": "dsh-approval-timeout",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Approval timeout for DeepSeek Harness: when a sandbox/escalation approval is not answered within a configurable period, the request is automatically rejected instead of waiting forever.",
-  "main": "host.js",
+  "main": "index.js",
   "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "dynamic": {
+      "idPrefix": "aptm",
+      "purpose": "Approval timeout for DeepSeek Harness: when a sandbox/escalation approval is not answered within a configurable period, the request is automatically rejected instead of waiting forever.",
+      "host": "host.js",
+      "client": "client.js"
+    },
     "client": {
-      "platform": "web"
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-cordis-client-runner",
+        "@deepseek-ai/dsh-api-remotes"
+      ]
     }
   },
   "license": "MIT",
@@ -29,8 +45,17 @@
     "node": ">=18"
   },
   "files": [
+    "index.js",
+    "cordis.patch.yml",
     "host.js",
     "client.js",
+    "client-loader.js",
     "README.md"
-  ]
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json",
+    "./client": "./client-loader.js"
+  }
 }
