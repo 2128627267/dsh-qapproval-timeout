@@ -13,28 +13,26 @@
 - 等待秒数（5–3600，默认 120）
 - 配置持久化于 `.dsh-features/approval-timeout.json`
 
-## Host RPC
+## Host RPC（HTTP JSON）
 
 | 方法 | 入参 | 返回 |
 |------|------|------|
-| `approval-timeout/get` | — | `{ enabled, seconds }` |
-| `approval-timeout/set` | `{ enabled, seconds }` | 更新后的配置 |
+| `GET /dsh-approval-timeout/get` | — | `{ enabled, seconds }` |
+| `POST /dsh-approval-timeout/set` | `{ enabled, seconds }` | 更新后的配置 |
 
-## 安装与自动启动（bundle 插件）
+## 安装（原生 bundle，与 dshmarket 同类）
 
-本插件已打包为标准 DSH bundle：安装后随 DSH 进程启动自动注册并激活，无需 `cordis_define`，也无需配置 `plugin-autostart.json`。
+本插件是标准 DSH bundle：安装后作为普通插件运行，**不产生 Cordis 动态插件、无需批准、无需任何手动激活**。
 
 ```bash
-# 发布到 npm 后（推荐，他人安装同样用这条）：
 dsh plugin --profile web add dsh-approval-timeout
-# 本地目录测试：
-dsh plugin --profile web add <本目录>
 ```
 
-然后重启 `dsh web`：
+重启 `dsh web` 后：
 
-- host 半部由插件自身自动定义并运行（统一 id 前缀 `qaptm`，如 `qaptm-1`）；
-- 浏览器页面启动时自动 reconcile 并加载 client 半部（首次安装已预授权，无需再点批准、无需进入设置页）。
+- `approval/request` 拦截由普通 host 插件直接挂载；
+- 设置页“批准超时”直接可用；
+- 不出现 `qaptm-*`，也没有 `run-*` 消息。
 
 ## 仓库
 

@@ -1,28 +1,14 @@
 {
   "name": "dsh-approval-timeout",
-  "version": "1.1.1",
+  "version": "2.0.0",
   "description": "Approval timeout for DeepSeek Harness: when a sandbox/escalation approval is not answered within a configurable period, the request is automatically rejected instead of waiting forever.",
+  "type": "module",
   "main": "index.js",
-  "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    },
-    "dynamic": {
-      "idPrefix": "qaptm",
-      "purpose": "Approval timeout for DeepSeek Harness: when a sandbox/escalation approval is not answered within a configurable period, the request is automatically rejected instead of waiting forever.",
-      "host": "host.js",
-      "client": "client.js"
-    },
-    "client": {
-      "platform": "web",
-      "immediately": true,
-      "inject": [
-        "@deepseek-ai/dsh-client-connection",
-        "@deepseek-ai/dsh-client-runtime",
-        "@deepseek-ai/dsh-cordis-client-runner",
-        "@deepseek-ai/dsh-api-remotes"
-      ]
-    }
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml"
   },
   "license": "MIT",
   "author": "qf",
@@ -45,18 +31,25 @@
   "engines": {
     "node": ">=18"
   },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1"
+  },
   "files": [
     "index.js",
-    "cordis.patch.yml",
-    "host.js",
     "client.js",
-    "client-loader.js",
+    "cordis.patch.yml",
     "README.md"
   ],
-  "type": "module",
-  "exports": {
-    ".": "./index.js",
-    "./package.json": "./package.json",
-    "./client": "./client-loader.js"
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
   }
 }

@@ -1,189 +1,172 @@
-// AUTO-GENERATED bundle bootstrap for dsh-approval-timeout.
-// Edit host.js/client.js, then regenerate with: node scripts/convert-to-bundle.js <pluginDir>
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+// dsh-approval-timeout — native DSH bundle host half.
+// Standard Cordis plugin: intercepts approval/request with a configurable timeout.
+export const name = 'dsh-approval-timeout'
+export const inject = []
 
-const PKG_DIR = fileURLToPath(new URL('.', import.meta.url))
-const PLUGIN_NAME = "dsh-approval-timeout"
-const ID_PREFIX = "qaptm"
-const PURPOSE = "Approval timeout for DeepSeek Harness: when a sandbox/escalation approval is not answered within a configurable period, the request is automatically rejected instead of waiting forever."
-const HOST_FILE = "host.js"
-const CLIENT_FILE = "client.js"
+const DIR = '.dsh-features'
+const TIMEOUT = '@dsh-approval-timeout@'
 
-export const name = PLUGIN_NAME
-export const inject = ['dynamicCordisRunner', 'agents']
-
-function log(ctx, message) {
-  try {
-    if (ctx?.logger?.info) ctx.logger.info(`[${PLUGIN_NAME}] ${message}`)
-    else if (ctx?.logger?.warn) ctx.logger.warn(`[${PLUGIN_NAME}] ${message}`)
-  } catch { /* ignore */ }
-}
-
-function rootAgents(agents) {
-  try { return typeof agents?.roots === 'function' ? agents.roots() : [] } catch { return [] }
-}
-
-function archivedSet(workspaceSvc) {
-  const archived = new Set()
-  try {
-    for (const id of workspaceSvc?.archivedSessionIds ?? []) archived.add(String(id))
-  } catch { /* ignore */ }
-  return archived
-}
-
-function workspaceKeyOf(sessionId, workspaceSvc) {
-  try {
-    for (const ws of workspaceSvc?.list?.() ?? []) {
-      if ((ws?.sessionIds ?? []).some((id) => String(id) === String(sessionId))) {
-        return String(ws?.id ?? ws?.path ?? 'default')
+function readJsonBody(request) {
+  return new Promise((resolve, reject) => {
+    let data = ''
+    request.on('data', (chunk) => {
+      data += chunk
+      if (data.length > 1024 * 1024) {
+        reject(new Error('request body too large'))
+        request.destroy()
       }
-    }
-  } catch { /* ignore */ }
-  return 'default'
+    })
+    request.on('end', () => {
+      try { resolve(data ? JSON.parse(data) : {}) } catch (error) { reject(error) }
+    })
+    request.on('error', reject)
+  })
 }
 
-/**
- * One bootstrap target per workspace (or one total when the workspace service
- * is unavailable): the newest non-archived root session. Restoring every root
- * used to duplicate each bundle in every old session and made tool names
- * (kb_search / rules_read / browser_open) collide across those duplicates.
- */
-function startupTargets(agents, workspaceSvc) {
-  const roots = rootAgents(agents)
-  if (roots.length === 0) return []
-  const archived = archivedSet(workspaceSvc)
-  const live = roots.filter((agent) => agent?.session?.id && !archived.has(String(agent.session.id)))
-  const candidates = live.length > 0 ? live : roots
-  const groups = new Map()
-  for (const agent of candidates) {
-    const key = workspaceKeyOf(agent.session.id, workspaceSvc)
-    const list = groups.get(key) ?? []
-    list.push(agent)
-    groups.set(key, list)
-  }
-  return [...groups.values()].map((list) => list.reduce((newest, agent) => {
-    const a = Number(newest?.session?.createdAt ?? 0)
-    const b = Number(agent?.session?.createdAt ?? 0)
-    return b > a ? agent : newest
-  }, list[0])).filter(Boolean)
-}
-
-function isStartupTarget(agent, agents, workspaceSvc) {
+function sameOrigin(request) {
   try {
-    return startupTargets(agents, workspaceSvc).some((candidate) => candidate === agent
-      || candidate?.id !== undefined && candidate.id === agent?.id)
+    const origin = request.headers.origin
+    if (!origin) return true
+    return new URL(origin).host === request.headers.host
   } catch { return false }
 }
 
-function isArchived(agent, workspaceSvc) {
-  if (!agent?.session?.id || !workspaceSvc?.archivedSessionIds) return false
-  try { return workspaceSvc.archivedSessionIds.some((id) => String(id) === String(agent.session.id)) } catch { return false }
-}
-
-function existingPlugin(runner, sessionId) {
-  try {
-    if (typeof runner?.registry?.all !== 'function') return undefined
-    return runner.registry.all().find((plugin) => plugin?.sessionId === sessionId
-      && [...(plugin.packages?.values?.() ?? [])].some((definition) => definition?.name === PLUGIN_NAME))
-  } catch { return undefined }
-}
-
-function latestPackage(plugin) {
-  const candidates = [...(plugin?.packages?.values?.() ?? [])].filter((definition) => definition?.name === PLUGIN_NAME)
-  return candidates[candidates.length - 1]
-}
-
-function preApprove(plugin, packageId) {
-  try {
-    plugin?.approvedClientPackages?.add?.(packageId)
-    if (plugin && 'clientVersionUpdatesApproved' in plugin) plugin.clientVersionUpdatesApproved = true
-  } catch { /* ignore */ }
-}
-
-async function activate(runner, agent, plugin, packageId) {
-  // Pre-authorize the exact installed package, then arm the STANDARD run
-  // request and return. The browser-side client-loader owns both halves from
-  // here: it reconciles the request (runHostHalf), loads the client half and
-  // settles activation. Calling runHostHalf immediately on the host used to
-  // race that reconcile and produced "run request no longer identifies the
-  // latest run" failures.
-  preApprove(plugin, packageId)
-  const mode = plugin?.currentPackageId !== undefined && plugin.currentPackageId !== packageId ? 'update' : 'run'
-  if (typeof runner?.run === 'function') {
-    return await runner.run(agent, plugin.pluginId, packageId, mode)
-  }
-  return await runner?.runHostHalf?.(agent, plugin.pluginId, packageId, mode, null, false)
+function sendJson(response, status, value) {
+  response.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
+  response.end(JSON.stringify(value))
 }
 
 export async function apply(ctx) {
-  try {
-    const runner = ctx.get('dynamicCordisRunner')
-    const agents = ctx.get('agents')
-    if (!runner || !agents) { log(ctx, 'skip: dynamicCordisRunner/agents unavailable'); return }
-
-    const hostCode = HOST_FILE ? readFileSync(join(PKG_DIR, HOST_FILE), 'utf8') : undefined
-    const clientCode = CLIENT_FILE ? readFileSync(join(PKG_DIR, CLIENT_FILE), 'utf8') : undefined
-    const code = {}
-    if (hostCode !== undefined) code.host = hostCode
-    if (clientCode !== undefined) code.client = clientCode
-    if (Object.keys(code).length === 0) { log(ctx, 'skip: no host/client source'); return }
-
-    const workspaceSvc = typeof ctx.get === 'function' ? ctx.get('workspace') : undefined
-    const busy = new Set()
-    async function ensureForAgent(agent) {
-      if (!agent?.session?.id) return
-      const roots = rootAgents(agents)
-      if (!roots.some((candidate) => candidate === agent || candidate?.id === agent?.id)) return
-      const sessionId = agent.session.id
-      if (busy.has(sessionId)) return
-      busy.add(sessionId)
-      try {
-        let plugin = existingPlugin(runner, sessionId)
-        let packageId
-        if (plugin) {
-          if (plugin.run !== undefined) { log(ctx, `session ${sessionId}: already running`); return }
-          packageId = latestPackage(plugin)?.packageId
-          if (!packageId) { log(ctx, `session ${sessionId}: no package to run`); return }
-        } else {
-          const defined = runner.define({
-            sessionId,
-            name: PLUGIN_NAME,
-            purpose: PURPOSE,
-            plugin: { kind: 'new', idPrefix: ID_PREFIX },
-            code,
-          })
-          if (!defined?.pluginId) { log(ctx, 'define returned no pluginId'); return }
-          packageId = defined.packageId
-          plugin = typeof runner.registry?.get === 'function' ? runner.registry.get(defined.pluginId) : undefined
-          if (!plugin) plugin = existingPlugin(runner, sessionId)
-        }
-        if (!plugin) { log(ctx, 'plugin record unavailable after define'); return }
-        const result = await activate(runner, agent, plugin, packageId)
-        log(ctx, `session ${sessionId} plugin=${plugin.pluginId} -> ${JSON.stringify(result)}`)
-      } catch (error) {
-        log(ctx, `session restore failed: ${error?.message || error}`)
-      } finally {
-        busy.delete(sessionId)
-      }
-    }
-
-    // Register first so an agent created during startup is not missed.
-    try {
-      ctx.on('agent/created', (payload) => {
-        const agent = payload?.agent
-        if (!agent || isArchived(agent, workspaceSvc)) return
-        if (!isStartupTarget(agent, agents, workspaceSvc)) {
-          log(ctx, `session ${agent.session?.id}: not the latest workspace session; skip`)
-          return
-        }
-        ensureForAgent(agent).catch((error) => log(ctx, `agent/created error: ${error?.message || error}`))
-      })
-    } catch { /* ignore */ }
-
-    for (const agent of startupTargets(agents, workspaceSvc)) await ensureForAgent(agent)
-  } catch (error) {
-    log(ctx, `apply failed: ${error?.message || error}`)
+  const get = (key) => {
+    try { return ctx.get(key) } catch { return undefined }
   }
+  const fsSvc = get('fs')
+  const timer = get('timer')
+  const agentsSvc = get('agents')
+  let cfg = { enabled: false, seconds: 120 }
+
+  async function readJson(rel) {
+    try {
+      if (!fsSvc) return null
+      const target = await fsSvc.resolve(rel, {})
+      return JSON.parse(await fsSvc.readText(target))
+    } catch { return null }
+  }
+  async function writeJson(rel, value) {
+    if (!fsSvc) return false
+    try {
+      const target = await fsSvc.resolve(rel, {})
+      await fsSvc.writeText(target, JSON.stringify(value, null, 2))
+      return true
+    } catch { return false }
+  }
+  async function loadAll() {
+    const saved = await readJson(DIR + '/approval-timeout.json')
+    if (saved && typeof saved === 'object') {
+      if (typeof saved.enabled === 'boolean') cfg.enabled = saved.enabled
+      if (typeof saved.seconds === 'number' && saved.seconds > 0) cfg.seconds = saved.seconds
+    }
+  }
+  await loadAll().catch(() => {})
+
+  async function notifyTimeout(agent, req, seconds) {
+    const tool = (req && (req.toolName || req.tool)) || '（未知操作）'
+    const reason = req && req.reason ? '，原因：' + req.reason : ''
+    const text = '[批准超时] 你请求的「' + tool + '」' + reason + ' 因超过 ' + seconds + ' 秒未获得批准，已被自动视为拒绝（rejected）。' +
+      '你可以自主决定：重新发起该操作、改用其他方式、或向用户说明后继续。'
+    try {
+      if (agent && typeof agent.followup === 'function') {
+        await agent.followup({ role: 'user', content: [{ type: 'text', text }], source: { kind: 'plugin', plugin: 'dsh-approval-timeout' } })
+        return 'followup-ok'
+      }
+    } catch { /* ignore */ }
+    try {
+      const sessionsSvc = get('sessions')
+      const session = sessionsSvc && typeof sessionsSvc.get === 'function' && agent ? sessionsSvc.get(agent.session ? agent.session.id : agent.id) : undefined
+      if (session && typeof session.append === 'function') {
+        session.append('user/message', { content: [{ type: 'text', text }], source: { kind: 'plugin', plugin: 'dsh-approval-timeout' } })
+        return 'log-ok'
+      }
+    } catch { /* ignore */ }
+    return 'failed'
+  }
+
+  ctx.on('approval/request', async (req, next) => {
+    if (!cfg.enabled || !timer || !(cfg.seconds > 0)) return next()
+    let dispose = null
+    let settled = false
+    const timeoutPromise = new Promise((resolve) => {
+      dispose = timer.timeout(() => {
+        if (!settled) { settled = true; resolve(TIMEOUT) }
+      }, cfg.seconds * 1000)
+    })
+    const outcome = await Promise.race([Promise.resolve(next()), timeoutPromise])
+    if (!settled) {
+      settled = true
+      if (dispose) dispose()
+    }
+    if (outcome === TIMEOUT) {
+      console.warn('approval-timeout: 批准超时（' + cfg.seconds + 's），自动拒绝')
+      let agent = null
+      try {
+        if (req && req.agent) agent = req.agent
+        else if (agentsSvc && typeof agentsSvc.roots === 'function') {
+          const roots = agentsSvc.roots()
+          agent = roots[0] || null
+        }
+      } catch { /* ignore */ }
+      const notified = await notifyTimeout(agent, req, cfg.seconds)
+      if (notified !== 'followup-ok' && notified !== 'log-ok') {
+        console.warn('approval-timeout: 无法注入超时消息（' + notified + '）')
+      }
+      return 'rejected'
+    }
+    return outcome
+  })
+
+  const api = {
+    get: async () => ({ ...cfg }),
+    set: async (args) => {
+      if (typeof args.enabled === 'boolean') cfg.enabled = args.enabled
+      const seconds = Number(args.seconds)
+      if (Number.isFinite(seconds) && seconds > 0 && seconds <= 3600) cfg.seconds = Math.round(seconds)
+      await writeJson(DIR + '/approval-timeout.json', cfg)
+      return { ...cfg }
+    },
+  }
+
+  ctx.inject(['webServer'], (hostCtx) => {
+    hostCtx.effect(() => {
+      const routes = [
+        ['/dsh-approval-timeout/get', 'GET', api.get],
+        ['/dsh-approval-timeout/set', 'POST', api.set],
+      ]
+      const disposers = []
+      for (const [path, method, handler] of routes) {
+        const dispose = hostCtx.webServer.register({
+          kind: 'exact',
+          path,
+          handler: async (request, response) => {
+            if (request.method !== method) {
+              response.writeHead(405, { allow: method })
+              response.end()
+              return
+            }
+            if (method === 'POST' && !sameOrigin(request)) {
+              sendJson(response, 403, { error: 'untrusted origin' })
+              return
+            }
+            try {
+              const args = method === 'POST' ? await readJsonBody(request) : {}
+              sendJson(response, 200, await handler(args))
+            } catch (error) {
+              sendJson(response, 500, { error: String((error && error.message) || error) })
+            }
+          },
+        })
+        disposers.push(dispose)
+      }
+      return () => { for (const dispose of disposers) { try { dispose() } catch { /* ignore */ } } }
+    }, 'dsh-approval-timeout: http routes')
+  })
 }
