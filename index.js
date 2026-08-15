@@ -5,7 +5,6 @@ import { join } from 'node:path'
 export const name = 'dsh-qapproval-timeout'
 export const inject = []
 
-const DIR = '.dsh-features'
 const TIMEOUT = '@dsh-qapproval-timeout@'
 
 function readJsonBody(request) {
@@ -46,6 +45,15 @@ export async function apply(ctx) {
   const timer = get('timer')
   const agentsSvc = get('agents')
   let cfg = { enabled: false, seconds: 120 }
+  let dshHome = process.env.DSH_HOME || ''
+  let workspaceRoot = process.cwd()
+
+  async function resolveBase() {
+    if (fsSvc) {
+      try { workspaceRoot = await fsSvc.resolve('.', {}) } catch { /* ignore */ }
+    }
+    if (!dshHome) dshHome = workspaceRoot
+  }
 
   async function readJson(rel) {
     try {
@@ -63,7 +71,8 @@ export async function apply(ctx) {
     } catch { return false }
   }
   async function loadAll() {
-    const saved = await readJson(join(DIR, 'approval-timeout.json'))
+    await resolveBase()
+    const saved = await readJson(join(dshHome, '.dsh-features', 'approval-timeout.json'))
     if (saved && typeof saved === 'object') {
       if (typeof saved.enabled === 'boolean') cfg.enabled = saved.enabled
       if (typeof saved.seconds === 'number' && saved.seconds > 0) cfg.seconds = saved.seconds
@@ -137,10 +146,11 @@ export async function apply(ctx) {
   const api = {
     get: async () => ({ ...cfg }),
     set: async (args) => {
+      await resolveBase()
       if (typeof args.enabled === 'boolean') cfg.enabled = args.enabled
       const seconds = Number(args.seconds)
       if (Number.isFinite(seconds) && seconds > 0 && seconds <= 3600) cfg.seconds = Math.round(seconds)
-      await writeJson(join(DIR, 'approval-timeout.json'), cfg)
+      await writeJson(join(dshHome, '.dsh-features', 'approval-timeout.json'), cfg)
       return { ...cfg }
     },
   }
