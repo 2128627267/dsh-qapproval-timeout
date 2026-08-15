@@ -47,7 +47,7 @@ return {
       return el('div', { className: 'dshf' },
         el('h3', null, '批准超时 Approval Timeout'),
         el('div', { className: 'hint' }, '当需要你批准的操作（如沙箱升级/权限请求）超过设定时间未响应时，自动视为拒绝（"先不弄"），避免无限等待阻塞任务。' +
-          '超时自动返回 rejected；你稍后仍可手动重新触发操作。'),
+          '超时自动返回 rejected，并**向会话注入超时信息**（含操作名与原因），模型看到后自主决定：重试该操作、换方式、或继续。'),
         el('div', { className: 'card' },
           el('div', { className: 'row', style: { marginBottom: 10 } },
             el('label', null, el('input', { type: 'checkbox', checked: form.enabled, onChange: (e) => setForm({ ...form, enabled: e.target.checked }) }), ' 启用批准超时')),

@@ -1,9 +1,10 @@
-// dsh-approval-timeout Host half — 批准等待超时：超过设定时间未响应自动视为拒绝（先不弄）
+// dsh-approval-timeout Host half v1.3 — 批准等待超时：超时自动拒绝（返回 rejected）+ 向会话注入超时信息，让模型自主决定
 return {
   async apply(ctx) {
     const get = (name) => ctx.get(name)
     const fsSvc = get('fs')
     const timer = get('timer')
+    const agentsSvc = get('agents')
     const DIR = '.dsh-features'
     let cfg = { enabled: false, seconds: 120 }
 
@@ -33,7 +34,30 @@ return {
 
     const TIMEOUT = '@dsh-approval-timeout@'
 
-    // 拦截 approval/request（waterfall）：超时未响应 → 返回 rejected
+    // 向所属会话注入超时信息（模型下一轮可见，自主决定是否重试）
+    async function notifyTimeout(agent, req, seconds) {
+      const tool = (req && (req.toolName || req.tool)) || '（未知操作）'
+      const reason = req && req.reason ? '，原因：' + req.reason : ''
+      const text = '[批准超时] 你请求的「' + tool + '」' + reason + ' 因超过 ' + seconds + ' 秒未获得批准，已被自动视为拒绝（rejected）。' +
+        '你可以自主决定：重新发起该操作、改用其他方式、或向用户说明后继续。'
+      try {
+        if (agent && typeof agent.followup === 'function') {
+          await agent.followup({ role: 'user', content: [{ type: 'text', text }], source: { kind: 'plugin', plugin: 'dsh-approval-timeout' } })
+          return 'followup-ok'
+        }
+      } catch { /* ignore */ }
+      try {
+        const sessionsSvc = get('sessions')
+        const session = sessionsSvc && typeof sessionsSvc.get === 'function' && agent ? sessionsSvc.get(agent.session ? agent.session.id : agent.id) : undefined
+        if (session && typeof session.append === 'function') {
+          session.append('user/message', { content: [{ type: 'text', text }], source: { kind: 'plugin', plugin: 'dsh-approval-timeout' } })
+          return 'log-ok'
+        }
+      } catch { /* ignore */ }
+      return 'failed'
+    }
+
+    // 拦截 approval/request（waterfall）：超时未响应 → 返回 rejected + 注入超时信息
     ctx.on('approval/request', async (req, next) => {
       if (!cfg.enabled || !timer || !(cfg.seconds > 0)) return next()
       let dispose = null
@@ -50,6 +74,19 @@ return {
       }
       if (outcome === TIMEOUT) {
         ctx.logger && ctx.logger.warn ? ctx.logger.warn('approval-timeout: 批准超时（' + cfg.seconds + 's），自动拒绝') : console.log('approval-timeout: 批准超时，自动拒绝')
+        // 附加超时信息给模型：让模型自主决定
+        let agent = null
+        try {
+          if (req && req.agent) agent = req.agent
+          else if (agentsSvc && typeof agentsSvc.roots === 'function') {
+            const roots = agentsSvc.roots()
+            agent = roots[0] || null
+          }
+        } catch { /* ignore */ }
+        const n = await notifyTimeout(agent, req, cfg.seconds)
+        if (n !== 'followup-ok' && n !== 'log-ok') {
+          ctx.logger && ctx.logger.warn ? ctx.logger.warn('approval-timeout: 无法注入超时消息（' + n + '）') : console.log('approval-timeout: 无法注入超时消息（' + n + '）')
+        }
         return 'rejected'
       }
       return outcome
