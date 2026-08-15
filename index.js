@@ -70,6 +70,13 @@ function startupTargets(agents, workspaceSvc) {
   }, list[0])).filter(Boolean)
 }
 
+function isStartupTarget(agent, agents, workspaceSvc) {
+  try {
+    return startupTargets(agents, workspaceSvc).some((candidate) => candidate === agent
+      || candidate?.id !== undefined && candidate.id === agent?.id)
+  } catch { return false }
+}
+
 function isArchived(agent, workspaceSvc) {
   if (!agent?.session?.id || !workspaceSvc?.archivedSessionIds) return false
   try { return workspaceSvc.archivedSessionIds.some((id) => String(id) === String(agent.session.id)) } catch { return false }
@@ -167,6 +174,10 @@ export async function apply(ctx) {
       ctx.on('agent/created', (payload) => {
         const agent = payload?.agent
         if (!agent || isArchived(agent, workspaceSvc)) return
+        if (!isStartupTarget(agent, agents, workspaceSvc)) {
+          log(ctx, `session ${agent.session?.id}: not the latest workspace session; skip`)
+          return
+        }
         ensureForAgent(agent).catch((error) => log(ctx, `agent/created error: ${error?.message || error}`))
       })
     } catch { /* ignore */ }
