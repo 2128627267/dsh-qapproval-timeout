@@ -25,7 +25,7 @@
         try { console.error(PLUGIN_NAME + ': ' + message, error || '') } catch (ignore) { /* never let logging break the app */ }
       }
       function getService(ctx, key) {
-        try { return ctx && typeof ctx.get === 'function' ? ctx.get(key) : undefined } catch (error) { return undefined }
+        try { return ctx ? ctx[key] : undefined } catch (error) { return undefined }
       }
       function currentSessionId(ctx) {
         try {
