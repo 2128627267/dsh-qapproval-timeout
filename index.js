@@ -1,5 +1,7 @@
 // dsh-qapproval-timeout — native DSH bundle host half.
 // Standard Cordis plugin: intercepts approval/request with a configurable timeout.
+import { join } from 'node:path'
+
 export const name = 'dsh-qapproval-timeout'
 export const inject = []
 
@@ -61,7 +63,7 @@ export async function apply(ctx) {
     } catch { return false }
   }
   async function loadAll() {
-    const saved = await readJson(DIR + '/approval-timeout.json')
+    const saved = await readJson(join(DIR, 'approval-timeout.json'))
     if (saved && typeof saved === 'object') {
       if (typeof saved.enabled === 'boolean') cfg.enabled = saved.enabled
       if (typeof saved.seconds === 'number' && saved.seconds > 0) cfg.seconds = saved.seconds
@@ -92,7 +94,7 @@ export async function apply(ctx) {
   }
 
   ctx.on('approval/request', async (req, next) => {
-    if (!cfg.enabled || !timer || !(cfg.seconds > 0)) return next()
+    if (!cfg.enabled || !timer || typeof timer.timeout !== 'function' || !(cfg.seconds > 0)) return next()
     let dispose = null
     let settled = false
     const timeoutPromise = new Promise((resolve) => {
@@ -100,28 +102,36 @@ export async function apply(ctx) {
         if (!settled) { settled = true; resolve(TIMEOUT) }
       }, cfg.seconds * 1000)
     })
-    const outcome = await Promise.race([Promise.resolve(next()), timeoutPromise])
-    if (!settled) {
-      settled = true
-      if (dispose) dispose()
-    }
-    if (outcome === TIMEOUT) {
-      console.warn('approval-timeout: 批准超时（' + cfg.seconds + 's），自动拒绝')
-      let agent = null
-      try {
-        if (req && req.agent) agent = req.agent
-        else if (agentsSvc && typeof agentsSvc.roots === 'function') {
-          const roots = agentsSvc.roots()
-          agent = roots[0] || null
-        }
-      } catch { /* ignore */ }
-      const notified = await notifyTimeout(agent, req, cfg.seconds)
-      if (notified !== 'followup-ok' && notified !== 'log-ok') {
-        console.warn('approval-timeout: 无法注入超时消息（' + notified + '）')
+    try {
+      const outcome = await Promise.race([Promise.resolve().then(() => next()), timeoutPromise])
+      if (!settled) {
+        settled = true
+        if (dispose) dispose()
       }
-      return 'rejected'
+      if (outcome === TIMEOUT) {
+        console.warn('approval-timeout: 批准超时（' + cfg.seconds + 's），自动拒绝')
+        let agent = null
+        try {
+          if (req && req.agent) agent = req.agent
+          else if (agentsSvc && typeof agentsSvc.roots === 'function') {
+            const roots = agentsSvc.roots()
+            agent = roots[0] || null
+          }
+        } catch { /* ignore */ }
+        const notified = await notifyTimeout(agent, req, cfg.seconds)
+        if (notified !== 'followup-ok' && notified !== 'log-ok') {
+          console.warn('approval-timeout: 无法注入超时消息（' + notified + '）')
+        }
+        return 'rejected'
+      }
+      return outcome
+    } catch (error) {
+      if (!settled) {
+        settled = true
+        if (dispose) dispose()
+      }
+      throw error
     }
-    return outcome
   })
 
   const api = {
@@ -130,7 +140,7 @@ export async function apply(ctx) {
       if (typeof args.enabled === 'boolean') cfg.enabled = args.enabled
       const seconds = Number(args.seconds)
       if (Number.isFinite(seconds) && seconds > 0 && seconds <= 3600) cfg.seconds = Math.round(seconds)
-      await writeJson(DIR + '/approval-timeout.json', cfg)
+      await writeJson(join(DIR, 'approval-timeout.json'), cfg)
       return { ...cfg }
     },
   }
