@@ -73,7 +73,7 @@ return {
         if (dispose) dispose()
       }
       if (outcome === TIMEOUT) {
-        ctx.logger && ctx.logger.warn ? ctx.logger.warn('approval-timeout: 批准超时（' + cfg.seconds + 's），自动拒绝') : console.log('approval-timeout: 批准超时，自动拒绝')
+        console.warn('approval-timeout: 批准超时（' + cfg.seconds + 's），自动拒绝')
         // 附加超时信息给模型：让模型自主决定
         let agent = null
         try {
@@ -85,7 +85,7 @@ return {
         } catch { /* ignore */ }
         const n = await notifyTimeout(agent, req, cfg.seconds)
         if (n !== 'followup-ok' && n !== 'log-ok') {
-          ctx.logger && ctx.logger.warn ? ctx.logger.warn('approval-timeout: 无法注入超时消息（' + n + '）') : console.log('approval-timeout: 无法注入超时消息（' + n + '）')
+          console.warn('approval-timeout: 无法注入超时消息（' + n + '）')
         }
         return 'rejected'
       }
